@@ -116,7 +116,7 @@ function getTimestamp(date) {
  */
 function updateValue(params, valueRangeBody, callback) {
   var request = gapi.client.sheets.spreadsheets.values.update(params, valueRangeBody);
-  request.then(callback);
+  request.then(callback, updateFailText);
 }
 
 /**
@@ -139,7 +139,7 @@ function insertRow(callback) {
     }],
   };
   var request = gapi.client.sheets.spreadsheets.batchUpdate(params, batchUpdateSpreadsheetRequestBody);
-  request.then(callback);
+  request.then(callback, updateFailText);
 }
 
 /**
@@ -186,11 +186,13 @@ function getParams(range) {
  * @param {Object} range 
  * @param {Integer} price 
  */
-function apprendTransferFee(purchase_method, range, price) {
+function apprendTransferFee(purchase_method, range, price, callback) {
   if(purchase_method === "交通系") {
     insertRow(function(res, err) {
-      updateValue(getParams(range), getValueRangeBody(range, price * -1, "交通費", "Pasmo"));
+      updateValue(getParams(range), getValueRangeBody(range, price * -1, "交通費", "Pasmo"), callback);
     });
+  } else {
+    callback();
   }
 }
 
@@ -201,9 +203,23 @@ function apprendTransferFee(purchase_method, range, price) {
  * @param {Function} callback 
  */
 function sendRequest(params, valueRangeBody, callback) {
-  insertRow(function(res, err) {
+  insertRow(function(res) {
     updateValue(params, valueRangeBody, callback);
   });
+}
+
+/**
+ * When Sheet API call failed, HTML text is updated.
+ */
+var updateFailText = function() {
+  document.getElementById("result-text").innerText = "Sheet API call failed...";
+}
+
+/**
+ * When Sheet API successfully called, HTML text is updated.
+ */
+var updateSuccessText = function() {
+  document.getElementById("result-text").innerText = "Sheet API successfully called!";
 }
 
 /**
@@ -219,16 +235,16 @@ function makeApiCall() {
   if(ryoh_flag) {
     sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(req, err) {                    
       sendRequest(getParams(range), getValueRangeBody(range, Math.round(price * -1/3), purchase_type, "キャッシュ", '(返金)'), function(req, err) {
-        apprendTransferFee(purchase_method, range, price);
+        apprendTransferFee(purchase_method, range, price, updateSuccessText);
       });
     });
   } else if(wapi_flag) {
     sendRequest(getParams(range), getValueRangeBody(range, Math.round(price * 2/3), purchase_type, "キャッシュ", '(わぴ払い)'), function(req, err){
-      apprendTransferFee(purchase_method, range, price);
+      apprendTransferFee(purchase_method, range, price, updateSuccessText);
     });
   } else {
     sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(res, err) {
-      apprendTransferFee(purchase_method, range, price);
+      apprendTransferFee(purchase_method, range, price, updateSuccessText);
     });
   }
 }
