@@ -14,10 +14,16 @@ var signoutButton = document.getElementById('signout_button');
 var sendButton = document.getElementById('send');
 var inputDate = document.getElementById('purchase_date');
 
+/**
+ * Call google api
+ */
 function handleClientLoad() {
   gapi.load('client:auth2', initClient);
 }
 
+/**
+ * Init Client
+ */
 function initClient() {
   gapi.client.init({
     apiKey: API_KEY,
@@ -38,6 +44,10 @@ function initClient() {
   });
 }
 
+/**
+ * Update visiblity of HTML element
+ * @param {*} isSignedIn 
+ */
 function updateSigninStatus(isSignedIn) {
   if (isSignedIn) {
     authorizeButton.style.display = 'none';
@@ -48,10 +58,18 @@ function updateSigninStatus(isSignedIn) {
   }
 }
 
+/**
+ * This functions is called when auth button clicked
+ * @param {Object} event 
+ */
 function handleAuthClick(event) {
   gapi.auth2.getAuthInstance().signIn();
 }
 
+/**
+ * This functions is called when Signout button clicked
+ * @param {Object} event 
+ */
 function handleSignoutClick(event) {
   gapi.auth2.getAuthInstance().signOut();
 }
@@ -62,6 +80,12 @@ function appendPre(message) {
   pre.appendChild(textContent);
 }
 
+/**
+ * Get Date String with delimeter spcified by arguments.
+ * @param {Date} date 
+ * @param {String} delimiter 
+ * @returns String
+ */
 function getDate(date, delimiter) {
   const yyyy = date.getFullYear();
   const MM = `0${date.getMonth()+1}`.slice(-2);
@@ -69,6 +93,11 @@ function getDate(date, delimiter) {
   return `${yyyy}${delimiter}${MM}${delimiter}${dd}`;
 }
 
+/**
+ * Get Timestamp string
+ * @param {Date} date 
+ * @returns Timestamp string
+ */
 function getTimestamp(date) {
   const yyyy = date.getFullYear();
   const MM = `0${date.getMonth()+1}`.slice(-2);
@@ -79,11 +108,23 @@ function getTimestamp(date) {
   return `${yyyy}/${MM}/${dd} ${HH}:${mm}:${ss}`;
 }
 
+/**
+ * Update value via spreadsheets.values.update API
+ * https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/update
+ * @param {Object} params 
+ * @param {Object} valueRangeBody 
+ * @param {Function} callback 
+ */
 function updateValue(params, valueRangeBody, callback) {
   var request = gapi.client.sheets.spreadsheets.values.update(params, valueRangeBody);
   request.then(callback);
 }
 
+/**
+ * Insert Row via spreadsheets.batchUpdate API
+ * https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate
+ * @param {Function} callback 
+ */
 function insertRow(callback) {
   var params = { spreadsheetId: SPREADSHEET_ID }
   var batchUpdateSpreadsheetRequestBody = {
@@ -102,6 +143,16 @@ function insertRow(callback) {
   request.then(callback);
 }
 
+/**
+ * Construct ValueRange Resources
+ * https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values
+ * @param {*} range 
+ * @param {*} price 
+ * @param {*} purchase_type 
+ * @param {*} purchase_method 
+ * @param {*} suffix 
+ * @returns 
+ */
 function getValueRangeBody(range, price, purchase_type, purchase_method, suffix) {
   const timestamp = getTimestamp(new Date());
   const purchase_date = getDate(new Date(document.getElementById("purchase_date").value), "/");
@@ -116,6 +167,12 @@ function getValueRangeBody(range, price, purchase_type, purchase_method, suffix)
   };
 }
 
+/**
+ * Construct Path & Query Parameters
+ * https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/update
+ * @param {Object} range 
+ * @returns URL parameters
+ */
 function getParams(range) {
   return {
     spreadsheetId: SPREADSHEET_ID,
@@ -124,6 +181,12 @@ function getParams(range) {
   };
 }
 
+/**
+ * Append transport fee.
+ * @param {String} purchase_method 
+ * @param {Object} range 
+ * @param {Integer} price 
+ */
 function apprendTransferFee(purchase_method, range, price) {
   if(purchase_method === "交通系") {
     insertRow(function(res, err) {
@@ -132,12 +195,21 @@ function apprendTransferFee(purchase_method, range, price) {
   }
 }
 
+/**
+ * Call API set (insert and update)
+ * @param {Object} params 
+ * @param {Object} valueRangeBody 
+ * @param {Function} callback 
+ */
 function sendRequest(params, valueRangeBody, callback) {
   insertRow(function(res, err) {
     updateValue(params, valueRangeBody, callback);
   });
 }
 
+/**
+ * Make API Call
+ */
 function makeApiCall() {
   const price = document.getElementById("price").value;
   const purchase_type = document.getElementById("purchase_type").value;
