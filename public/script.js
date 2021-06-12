@@ -1,4 +1,5 @@
 const DISCOVERY_DOCS = ["https://sheets.googleapis.com/$discovery/rest?version=v4"];
+const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
 const VALUE_INPUT_OPTION = 'USER_ENTERED'; 
 const DIMENSION = "ROWS";
 const MAJOR_DIMENSION = "ROWS";
@@ -6,7 +7,6 @@ const MAJOR_DIMENSION = "ROWS";
 // You have to define following secrets at gitignored files
 // const CLIENT_ID =
 // const API_KEY = 
-// const SCOPES = 
 // const SPREADSHEET_ID = 
 
 var authorizeButton = document.getElementById('authorize_button');
