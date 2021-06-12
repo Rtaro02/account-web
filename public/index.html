@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Account</title>
+    <meta charset="utf-8" />
+  </head>
+  <body>
+    <p>My Account</p>
+
+    <!--Add buttons to initiate auth sequence and sign out-->
+    <button id="authorize_button" style="display: none;">Authorize</button>
+    <button id="signout_button" style="display: none;">Sign Out</button>
+    <div>
+      購入日
+      <input id="purchase_date" placeholder="purchase_date" type="date">
+    </div>
+    <div>
+      収支分類
+      <select id="purchase_type">
+        <option value="食費">食費</option>
+        <option value="交際費">交際費</option>
+        <option value="アイドル">アイドル</option>
+        <option value="交通費">交通費</option>
+        <option value="必要経費">必要経費</option>
+        <option value="雑貨費">雑貨費</option>
+        <option value="特別費用">特別費用</option>
+      </select>
+    </div>
+    <div>
+      収支分類
+      <select id="purchase_method">
+        <option value="三井住友">三井住友</option>
+        <option value="キャッシュ">キャッシュ</option>
+        <option value="交通系">交通系</option>
+        <option value="セブンカード">セブンカード</option>
+        <option value="Pasmo">Pasmo</option>
+        <option value="AMEX">AMEX</option>
+        <option value="ヨドバシ">ヨドバシ</option>
+      </select>
+    </div>
+    <div>
+      支払い金額
+      <input id="price" type="number">
+    </div>
+    <div>
+      支払い購買概要
+      <input id="description" type="text">
+    </div>
+    <div>
+      りょう払い案件
+      <input id="ryoh" type="checkbox">
+    </div>
+    <div>
+      わぴ払い案件
+      <input id="wapi" type="checkbox">
+    </div>
+    <div>
+      <button id="send">登録</button>
+    </div>
+
+    <pre id="content" style="white-space: pre-wrap;"></pre>
+
+    <script type="text/javascript" src="secrets.js"></script>
+    <script type="text/javascript" src="script.js"></script>
+
+    <script async defer src="https://apis.google.com/js/api.js"
+      onload="this.onload=function(){};handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()">
+      window.onload = function () {
+        document.getElementById("purchase_date").value = getDate(new Date(), "-");
+      }
+    </script>
+  </body>
+</html>
