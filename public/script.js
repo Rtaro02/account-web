@@ -12,7 +12,6 @@ const MAJOR_DIMENSION = "ROWS";
 var authorizeButton = document.getElementById('authorize_button');
 var signoutButton = document.getElementById('signout_button');
 var sendButton = document.getElementById('send');
-var inputDate = document.getElementById('purchase_date');
 
 /**
  * Call google api
@@ -38,7 +37,7 @@ function initClient() {
     updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
     authorizeButton.onclick = handleAuthClick;
     signoutButton.onclick = handleSignoutClick;
-    send.onclick = makeApiCall;
+    sendButton.onclick = makeApiCall;
   }, function(error) {
     appendPre(JSON.stringify(error, null, 2));
   });
