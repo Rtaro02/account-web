@@ -209,17 +209,25 @@ function sendRequest(params, valueRangeBody, callback) {
 }
 
 /**
+ * Update text
+ * @param {String} text 
+ */
+function updateHTMLText(text) {
+  document.getElementById("result-text").innerText = text;
+}
+
+/**
  * When Sheet API call failed, HTML text is updated.
  */
 var updateFailText = function() {
-  document.getElementById("result-text").innerText = "Sheet API call failed...";
+  updateHTMLText("Sheet API call failed...");
 }
 
 /**
  * When Sheet API successfully called, HTML text is updated.
  */
 var updateSuccessText = function() {
-  document.getElementById("result-text").innerText = "Sheet API successfully called!";
+  updateHTMLText("Sheet API successfully called!");
 }
 
 /**
@@ -232,6 +240,9 @@ function makeApiCall() {
   const ryoh_flag = document.getElementById("ryoh").checked;
   const wapi_flag = document.getElementById("wapi").checked;        
   const range = 'List!A2:F2';
+
+  // Init text
+  updateHTMLText("");
   if(ryoh_flag) {
     sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(req, err) {                    
       sendRequest(getParams(range), getValueRangeBody(range, Math.round(price * -1/3), purchase_type, "キャッシュ", '(返金)'), function(req, err) {
