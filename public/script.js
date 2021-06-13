@@ -221,6 +221,7 @@ function updateHTMLText(text) {
  */
 var updateFailText = function() {
   updateHTMLText("Sheet API call failed...");
+  setButtonAvailability(false);
 }
 
 /**
@@ -228,6 +229,11 @@ var updateFailText = function() {
  */
 var updateSuccessText = function() {
   updateHTMLText("Sheet API successfully called!");
+  setButtonAvailability(false);
+}
+
+function setButtonAvailability(isDisable) {
+  document.getElementById("send").disabled = isDisable;
 }
 
 /**
@@ -243,6 +249,7 @@ function makeApiCall() {
 
   // Init text
   updateHTMLText("Sending.");
+  setButtonAvailability(true);
   if(ryoh_flag) {
     sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(req, err) {                    
       updateHTMLText("Sending..");
