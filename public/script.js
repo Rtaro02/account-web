@@ -242,19 +242,23 @@ function makeApiCall() {
   const range = 'List!A2:F2';
 
   // Init text
-  updateHTMLText("");
+  updateHTMLText("Sending.");
   if(ryoh_flag) {
     sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(req, err) {                    
+      updateHTMLText("Sending..");
       sendRequest(getParams(range), getValueRangeBody(range, Math.round(price * -1/3), purchase_type, "キャッシュ", '(返金)'), function(req, err) {
+        updateHTMLText("Sending...");
         apprendTransferFee(purchase_method, range, price, updateSuccessText);
       });
     });
   } else if(wapi_flag) {
     sendRequest(getParams(range), getValueRangeBody(range, Math.round(price * 2/3), purchase_type, "キャッシュ", '(わぴ払い)'), function(req, err){
+      updateHTMLText("Sending..");
       apprendTransferFee(purchase_method, range, price, updateSuccessText);
     });
   } else {
     sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(res, err) {
+      updateHTMLText("Sending..");
       apprendTransferFee(purchase_method, range, price, updateSuccessText);
     });
   }
