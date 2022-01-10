@@ -4,6 +4,7 @@ const VALUE_INPUT_OPTION = 'USER_ENTERED';
 const DIMENSION = 'ROWS';
 const MAJOR_DIMENSION = 'ROWS';
 const ACCOUNT_RANGE = 'List!A2:F2';
+const ADJUSTMENT_RANGE = 'adjustment_list!A2:F2';
 
 // You have to define following secrets at gitignored files
 // const CLIENT_ID =
@@ -193,6 +194,28 @@ function apprendTransferFee(purchase_method, range, price, callback) {
   } else {
     callback();
   }
+}
+
+/**
+ * Call API set (insert and update)
+ * @param {Object} valueRangeBody 
+ * @param {Function} callback 
+ */
+function sendRequestAccount(valueRangeBody, callback) {
+  insertRow(function(res) {
+    updateValue(getParams(ACCOUNT_RANGE), valueRangeBody, callback);
+  });
+}
+
+/**
+ * Call API set (insert and update)
+ * @param {Object} valueRangeBody 
+ * @param {Function} callback 
+ */
+function sendRequestAdjustment(valueRangeBody, callback) {
+  insertRow(function(res) {
+    updateValue(getParams(ADJUSTMENT_RANGE), valueRangeBody, callback);
+  });
 }
 
 /**
