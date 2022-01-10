@@ -1,8 +1,9 @@
-const DISCOVERY_DOCS = ["https://sheets.googleapis.com/$discovery/rest?version=v4"];
-const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+const DISCOVERY_DOCS = ['https://sheets.googleapis.com/$discovery/rest?version=v4'];
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 const VALUE_INPUT_OPTION = 'USER_ENTERED'; 
-const DIMENSION = "ROWS";
-const MAJOR_DIMENSION = "ROWS";
+const DIMENSION = 'ROWS';
+const MAJOR_DIMENSION = 'ROWS';
+const ACCOUNT_RANGE = 'List!A2:F2';
 
 // You have to define following secrets at gitignored files
 // const CLIENT_ID =
@@ -128,12 +129,12 @@ function insertRow(callback) {
   var params = { spreadsheetId: SPREADSHEET_ID }
   var batchUpdateSpreadsheetRequestBody = {
     requests: [{
-      "insertDimension": {
-        "range": {
-          "sheetId": 424497227,
-          "dimension": DIMENSION,
-          "startIndex": 1,
-          "endIndex": 2
+      'insertDimension': {
+        'range': {
+          'sheetId': 424497227,
+          'dimension': DIMENSION,
+          'startIndex': 1,
+          'endIndex': 2
         }
       }
     }],
@@ -154,13 +155,13 @@ function insertRow(callback) {
  */
 function getValueRangeBody(range, price, purchase_type, purchase_method, suffix) {
   const timestamp = getTimestamp(new Date());
-  const purchase_date = getDate(new Date(document.getElementById("purchase_date").value), "/");
-  const description = !!suffix ? `${document.getElementById("description").value} ${suffix}` : document.getElementById("description").value;
+  const purchase_date = getDate(new Date(document.getElementById('purchase_date').value), '/');
+  const description = !!suffix ? `${document.getElementById('description').value} ${suffix}` : document.getElementById('description').value;
 
   return {
-    "range": range,
-    "majorDimension": MAJOR_DIMENSION,
-    "values": [
+    'range': range,
+    'majorDimension': MAJOR_DIMENSION,
+    'values': [
       [ timestamp, purchase_date, purchase_type, purchase_method, price, description]
     ]
   };
@@ -187,10 +188,8 @@ function getParams(range) {
  * @param {Integer} price 
  */
 function apprendTransferFee(purchase_method, range, price, callback) {
-  if(purchase_method === "交通系") {
-    insertRow(function(res, err) {
-      updateValue(getParams(range), getValueRangeBody(range, price * -1, "交通費", "Pasmo"), callback);
-    });
+  if(purchase_method === '交通系') {
+    sendRequest(getParams(range), getValueRangeBody(range, price * -1, '交通費', 'Pasmo'), callback);
   } else {
     callback();
   }
@@ -213,14 +212,14 @@ function sendRequest(params, valueRangeBody, callback) {
  * @param {String} text 
  */
 function updateHTMLText(text) {
-  document.getElementById("result-text").innerText = text;
+  document.getElementById('result-text').innerText = text;
 }
 
 /**
  * When Sheet API call failed, HTML text is updated.
  */
 var updateFailText = function() {
-  updateHTMLText("Sheet API call failed...");
+  updateHTMLText('Sheet API call failed...');
   setButtonAvailability(false);
 }
 
@@ -228,41 +227,40 @@ var updateFailText = function() {
  * When Sheet API successfully called, HTML text is updated.
  */
 var updateSuccessText = function() {
-  updateHTMLText("Sheet API successfully called!");
+  updateHTMLText('Sheet API successfully called!');
   setButtonAvailability(false);
 }
 
 function setButtonAvailability(isDisable) {
-  document.getElementById("send").disabled = isDisable;
+  document.getElementById('send').disabled = isDisable;
 }
 
 /**
  * Make API Call
  */
 function makeApiCall() {
-  const price = document.getElementById("price").value;
-  const purchase_type = document.getElementById("purchase_type").value;
-  const purchase_method = document.getElementById("purchase_method").value;
-  const ryoh_flag = document.getElementById("ryoh").checked;
-  const wapi_flag = document.getElementById("wapi").checked;        
-  const range = 'List!A2:F2';
+  const price = document.getElementById('price').value;
+  const purchase_type = document.getElementById('purchase_type').value;
+  const purchase_method = document.getElementById('purchase_method').value;
+  const ryoh_flag = document.getElementById('ryoh').checked;
+  const wapi_flag = document.getElementById('wapi').checked;        
 
   // Init text
-  updateHTMLText("Sending...");
+  updateHTMLText('Sending...');
   setButtonAvailability(true);
   if(ryoh_flag) {
-    sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(req, err) {                    
-      sendRequest(getParams(range), getValueRangeBody(range, Math.round(price * -1/3), purchase_type, "キャッシュ", '(返金)'), function(req, err) {
-        apprendTransferFee(purchase_method, range, price, updateSuccessText);
+    sendRequest(getParams(ACCOUNT_RANGE), getValueRangeBody(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(req, err) {                    
+      sendRequest(getParams(ACCOUNT_RANGE), getValueRangeBody(ACCOUNT_RANGE, Math.round(price * -1/3), purchase_type, 'キャッシュ', '(返金)'), function(req, err) {
+        apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateSuccessText);
       });
     });
   } else if(wapi_flag) {
-    sendRequest(getParams(range), getValueRangeBody(range, Math.round(price * 2/3), purchase_type, "キャッシュ", '(わぴ払い)'), function(req, err){
-      apprendTransferFee(purchase_method, range, price, updateSuccessText);
+    sendRequest(getParams(ACCOUNT_RANGE), getValueRangeBody(ACCOUNT_RANGE, Math.round(price * 2/3), purchase_type, 'キャッシュ', '(わぴ払い)'), function(req, err){
+      apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateSuccessText);
     });
   } else {
-    sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(res, err) {
-      apprendTransferFee(purchase_method, range, price, updateSuccessText);
+    sendRequest(getParams(ACCOUNT_RANGE), getValueRangeBody(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(res, err) {
+      apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateSuccessText);
     });
   }
 }
