@@ -9,15 +9,29 @@ const ACCOUNT_SHEET_ID = 424497227;
 const ADJUSTMENT_SHEET_ID = 206700719;
 const ACCOUNT_TEXT_ID = 'account-result-text';
 const ADJUSTMENT_TEXT_ID = 'adjustment-result-text';
+const SHEETS_FUNCTION = '=if($E2="Ryotaro",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 2, false),0) + if($E2="Wappy",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 3, false),0)';
+const METHOD_CASH = 'キャッシュ';
+const METHOD_TRANSTPORT = '交通系';
+const METHOD_PASMO_CREDIT_CARD = 'Pasmo';
+const SUFFIX_REFUND = '(返金)';
+const SUFFIX_WAPI_PAY = '(わぴ払い)';
+const PAYMENT_BY_RYOH = 'Ryotaro';
+const PAYMENT_BY_WAPPY = 'Wappy';
+const TYPE_TRANSPORT = '交通費';
+const HTML_ID_PURCHASE = 'purchase_date';
+const HTML_ID_DESCRIPTION = 'description';
+const HTML_ID_AUTH_BUTTON = 'authorize_button';
+const HTML_ID_SIGNOUT_BUTTON = 'signout_button';
+const HTML_ID_SEND_BUTTON = 'send';
 
 // You have to define following secrets at gitignored files
 // const CLIENT_ID =
 // const API_KEY = 
 // const SPREADSHEET_ID = 
 
-var authorizeButton = document.getElementById('authorize_button');
-var signoutButton = document.getElementById('signout_button');
-var sendButton = document.getElementById('send');
+var authorizeButton = document.getElementById(HTML_ID_AUTH_BUTTON);
+var signoutButton = document.getElementById(HTML_ID_SIGNOUT_BUTTON);
+var sendButton = document.getElementById(HTML_ID_SEND_BUTTON);
 
 /**
  * Call google api
@@ -158,13 +172,13 @@ function insertRow(sheetId, fail_callback, callback) {
  * @param {*} suffix 
  * @returns 
  */
-function getValueRangeBodyAccount(range, price, purchase_type, purchase_method, suffix) {
+function getValueRangeBodyAccount(price, purchase_type, purchase_method, suffix) {
   const timestamp = getTimestamp(new Date());
-  const purchase_date = getDate(new Date(document.getElementById('purchase_date').value), '/');
-  const description = !!suffix ? `${document.getElementById('description').value} ${suffix}` : document.getElementById('description').value;
+  const purchase_date = getDate(new Date(document.getElementById(HTML_ID_PURCHASE).value), '/');
+  const description = !!suffix ? `${document.getElementById(HTML_ID_DESCRIPTION).value} ${suffix}` : document.getElementById(HTML_ID_DESCRIPTION).value;
 
   return {
-    'range': range,
+    'range': ACCOUNT_RANGE,
     'majorDimension': MAJOR_DIMENSION,
     'values': [
       [ timestamp, purchase_date, purchase_type, purchase_method, price, description]
@@ -182,18 +196,17 @@ function getValueRangeBodyAccount(range, price, purchase_type, purchase_method, 
  * @param {*} suffix 
  * @returns 
  */
-function getValueRangeBodyAdjustment(range, price, flag) {
-  const purchase_date = getDate(new Date(document.getElementById('purchase_date').value), '/');
-  const description = document.getElementById('description').value;
+function getValueRangeBodyAdjustment(price, flag) {
+  const purchase_date = getDate(new Date(document.getElementById(HTML_ID_PURCHASE).value), '/');
+  const description = document.getElementById(HTML_ID_DESCRIPTION).value;
   // 2/3の固定割合
   var wari_flag = 0;
-  var sheet_function = '=if($E2="Ryotaro",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 2, false),0) + if($E2="Wappy",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 3, false),0)'
 
   return {
-    'range': range,
+    'range': ADJUSTMENT_RANGE,
     'majorDimension': MAJOR_DIMENSION,
     'values': [
-      [ description, price, purchase_date, wari_flag, flag, sheet_function]
+      [ description, price, purchase_date, wari_flag, flag, SHEETS_FUNCTION]
     ]
   };
 }
@@ -218,9 +231,9 @@ function getParams(range) {
  * @param {Object} range 
  * @param {Integer} price 
  */
-function apprendTransferFee(purchase_method, range, price, callback) {
-  if(purchase_method === '交通系') {
-    sendRequestAccount(getValueRangeBodyAccount(range, price * -1, '交通費', 'Pasmo'), callback);
+function apprendTransferFee(purchase_method, price, callback) {
+  if(purchase_method === METHOD_TRANSTPORT) {
+    sendRequestAccount(getValueRangeBodyAccount(price * -1, TYPE_TRANSPORT, METHOD_PASMO_CREDIT_CARD), callback);
   } else {
     callback();
   }
@@ -311,21 +324,21 @@ function makeApiCall() {
   // Init text
   setButtonAvailability(true);
   if(ryoh_flag) {
-    sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(req, err) {                    
-      sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, Math.round(price * -1/3), purchase_type, 'キャッシュ', '(返金)'), function(req, err) {
-        apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateAccountSuccessText);
+    sendRequestAccount(getValueRangeBodyAccount(price, purchase_type, purchase_method), function(req, err) {                    
+      sendRequestAccount(getValueRangeBodyAccount(Math.round(price * -1/3), purchase_type, METHOD_CASH, SUFFIX_REFUND), function(req, err) {
+        apprendTransferFee(purchase_method, price, updateAccountSuccessText);
       });
     });
-    sendRequestAdjustment(getValueRangeBodyAdjustment(ADJUSTMENT_RANGE, price, "Ryotaro"), updateAdjustmentSuccessText);
+    sendRequestAdjustment(getValueRangeBodyAdjustment(price, PAYMENT_BY_RYOH), updateAdjustmentSuccessText);
     return;
   }
   if(wapi_flag) {
-    sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, Math.round(price * 2/3), purchase_type, 'キャッシュ', '(わぴ払い)'), updateAccountSuccessText);
-    sendRequestAdjustment(getValueRangeBodyAdjustment(ADJUSTMENT_RANGE, price, "Wappy"), updateAdjustmentSuccessText);
+    sendRequestAccount(getValueRangeBodyAccount(Math.round(price * 2/3), purchase_type, METHOD_CASH, SUFFIX_WAPI_PAY), updateAccountSuccessText);
+    sendRequestAdjustment(getValueRangeBodyAdjustment(price, PAYMENT_BY_WAPPY), updateAdjustmentSuccessText);
     return;
   }
   // Default Request
-  sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(res, err) {
-    apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateAccountSuccessText);
+  sendRequestAccount(getValueRangeBodyAccount(price, purchase_type, purchase_method), function(res, err) {
+    apprendTransferFee(purchase_method, price, updateAccountSuccessText);
   });
 }
