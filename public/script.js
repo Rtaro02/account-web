@@ -18,11 +18,17 @@ const SUFFIX_WAPI_PAY = '(わぴ払い)';
 const PAYMENT_BY_RYOH = 'Ryotaro';
 const PAYMENT_BY_WAPPY = 'Wappy';
 const TYPE_TRANSPORT = '交通費';
-const HTML_ID_PURCHASE = 'purchase_date';
+const HTML_ID_PURCHASE_DATE = 'purchase_date';
+const HTML_ID_PURCHASE_RATE = 'purchase_rate';
 const HTML_ID_DESCRIPTION = 'description';
 const HTML_ID_AUTH_BUTTON = 'authorize_button';
 const HTML_ID_SIGNOUT_BUTTON = 'signout_button';
 const HTML_ID_SEND_BUTTON = 'send';
+const HTML_ID_PRICE = 'price';
+const HTML_ID_PURCHASE_TYPE = 'purchase_type';
+const HTML_ID_PURCHASE_METHOD = 'purchase_method';
+const HTML_ID_RYOH = 'ryoh';
+const HTML_ID_WAPI = 'wapi';
 
 // You have to define following secrets at gitignored files
 // const CLIENT_ID =
@@ -174,7 +180,7 @@ function insertRow(sheetId, fail_callback, callback) {
  */
 function getValueRangeBodyAccount(price, purchase_type, purchase_method, suffix) {
   const timestamp = getTimestamp(new Date());
-  const purchase_date = getDate(new Date(document.getElementById(HTML_ID_PURCHASE).value), '/');
+  const purchase_date = getDate(new Date(document.getElementById(HTML_ID_PURCHASE_DATE).value), '/');
   const description = !!suffix ? `${document.getElementById(HTML_ID_DESCRIPTION).value} ${suffix}` : document.getElementById(HTML_ID_DESCRIPTION).value;
 
   return {
@@ -197,16 +203,15 @@ function getValueRangeBodyAccount(price, purchase_type, purchase_method, suffix)
  * @returns 
  */
 function getValueRangeBodyAdjustment(price, flag) {
-  const purchase_date = getDate(new Date(document.getElementById(HTML_ID_PURCHASE).value), '/');
+  const purchase_date = getDate(new Date(document.getElementById(HTML_ID_PURCHASE_DATE).value), '/');
   const description = document.getElementById(HTML_ID_DESCRIPTION).value;
-  // 2/3の固定割合
-  var wari_flag = 0;
+  const purchase_rate = document.getElementById(HTML_ID_PURCHASE_RATE).value;
 
   return {
     'range': ADJUSTMENT_RANGE,
     'majorDimension': MAJOR_DIMENSION,
     'values': [
-      [ description, price, purchase_date, wari_flag, flag, SHEETS_FUNCTION]
+      [ description, price, purchase_date, purchase_rate, flag, SHEETS_FUNCTION]
     ]
   };
 }
@@ -307,15 +312,29 @@ function setButtonAvailability(isDisable) {
   document.getElementById('send').disabled = isDisable;
 }
 
+function getPurchaseRate() {
+  const purchase_rate = document.getElementById(HTML_ID_PURCHASE_RATE).value;
+  switch(purchase_rate) {
+    case "0": // Default
+      return 2/3;
+    case "1": // Even
+      return 1/2;
+    case "2": // Ryoh
+      return 1;
+    case "3": // Wapi
+      return 0;
+  }
+}
+
 /**
  * Make API Call
  */
 function makeApiCall() {
-  const price = document.getElementById('price').value;
-  const purchase_type = document.getElementById('purchase_type').value;
-  const purchase_method = document.getElementById('purchase_method').value;
-  const ryoh_flag = document.getElementById('ryoh').checked;
-  const wapi_flag = document.getElementById('wapi').checked;
+  const price = document.getElementById(HTML_ID_PRICE).value;
+  const purchase_type = document.getElementById(HTML_ID_PURCHASE_TYPE).value;
+  const purchase_method = document.getElementById(HTML_ID_PURCHASE_METHOD).value;
+  const ryoh_flag = document.getElementById(HTML_ID_RYOH).checked;
+  const wapi_flag = document.getElementById(HTML_ID_WAPI).checked;
   
   // Clear Texts
   updateHTMLText(ACCOUNT_TEXT_ID, '');
@@ -325,15 +344,15 @@ function makeApiCall() {
   setButtonAvailability(true);
   if(ryoh_flag) {
     sendRequestAccount(getValueRangeBodyAccount(price, purchase_type, purchase_method), function(req, err) {                    
-      sendRequestAccount(getValueRangeBodyAccount(Math.round(price * -1/3), purchase_type, METHOD_CASH, SUFFIX_REFUND), function(req, err) {
+      sendRequestAccount(getValueRangeBodyAccount(Math.round(price * (getPurchaseRate() - 1)), purchase_type, METHOD_CASH, SUFFIX_REFUND), function(req, err) {
         apprendTransferFee(purchase_method, price, updateAccountSuccessText);
-      });
+      })
     });
     sendRequestAdjustment(getValueRangeBodyAdjustment(price, PAYMENT_BY_RYOH), updateAdjustmentSuccessText);
     return;
   }
   if(wapi_flag) {
-    sendRequestAccount(getValueRangeBodyAccount(Math.round(price * 2/3), purchase_type, METHOD_CASH, SUFFIX_WAPI_PAY), updateAccountSuccessText);
+    sendRequestAccount(getValueRangeBodyAccount(Math.round(price * getPurchaseRate()), purchase_type, METHOD_CASH, SUFFIX_WAPI_PAY), updateAccountSuccessText);
     sendRequestAdjustment(getValueRangeBodyAdjustment(price, PAYMENT_BY_WAPPY), updateAdjustmentSuccessText);
     return;
   }
