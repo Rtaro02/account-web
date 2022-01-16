@@ -9,15 +9,35 @@ const ACCOUNT_SHEET_ID = 424497227;
 const ADJUSTMENT_SHEET_ID = 206700719;
 const ACCOUNT_TEXT_ID = 'account-result-text';
 const ADJUSTMENT_TEXT_ID = 'adjustment-result-text';
+const SHEETS_FUNCTION = '=if($E2="Ryotaro",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 2, false),0) + if($E2="Wappy",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 3, false),0)';
+const METHOD_CASH = 'キャッシュ';
+const METHOD_TRANSTPORT = '交通系';
+const METHOD_PASMO_CREDIT_CARD = 'Pasmo';
+const SUFFIX_REFUND = '(返金)';
+const SUFFIX_WAPI_PAY = '(わぴ払い)';
+const PAYMENT_BY_RYOH = 'Ryotaro';
+const PAYMENT_BY_WAPPY = 'Wappy';
+const TYPE_TRANSPORT = '交通費';
+const HTML_ID_PURCHASE_DATE = 'purchase_date';
+const HTML_ID_PURCHASE_RATE = 'purchase_rate';
+const HTML_ID_DESCRIPTION = 'description';
+const HTML_ID_AUTH_BUTTON = 'authorize_button';
+const HTML_ID_SIGNOUT_BUTTON = 'signout_button';
+const HTML_ID_SEND_BUTTON = 'send';
+const HTML_ID_PRICE = 'price';
+const HTML_ID_PURCHASE_TYPE = 'purchase_type';
+const HTML_ID_PURCHASE_METHOD = 'purchase_method';
+const HTML_ID_RYOH = 'ryoh';
+const HTML_ID_WAPI = 'wapi';
 
 // You have to define following secrets at gitignored files
 // const CLIENT_ID =
 // const API_KEY = 
 // const SPREADSHEET_ID = 
 
-var authorizeButton = document.getElementById('authorize_button');
-var signoutButton = document.getElementById('signout_button');
-var sendButton = document.getElementById('send');
+var authorizeButton = document.getElementById(HTML_ID_AUTH_BUTTON);
+var signoutButton = document.getElementById(HTML_ID_SIGNOUT_BUTTON);
+var sendButton = document.getElementById(HTML_ID_SEND_BUTTON);
 
 /**
  * Call google api
@@ -158,13 +178,13 @@ function insertRow(sheetId, fail_callback, callback) {
  * @param {*} suffix 
  * @returns 
  */
-function getValueRangeBodyAccount(range, price, purchase_type, purchase_method, suffix) {
+function getValueRangeBodyAccount(price, purchase_type, purchase_method, suffix) {
   const timestamp = getTimestamp(new Date());
-  const purchase_date = getDate(new Date(document.getElementById('purchase_date').value), '/');
-  const description = !!suffix ? `${document.getElementById('description').value} ${suffix}` : document.getElementById('description').value;
+  const purchase_date = getDate(new Date(document.getElementById(HTML_ID_PURCHASE_DATE).value), '/');
+  const description = !!suffix ? `${document.getElementById(HTML_ID_DESCRIPTION).value} ${suffix}` : document.getElementById(HTML_ID_DESCRIPTION).value;
 
   return {
-    'range': range,
+    'range': ACCOUNT_RANGE,
     'majorDimension': MAJOR_DIMENSION,
     'values': [
       [ timestamp, purchase_date, purchase_type, purchase_method, price, description]
@@ -182,18 +202,16 @@ function getValueRangeBodyAccount(range, price, purchase_type, purchase_method, 
  * @param {*} suffix 
  * @returns 
  */
-function getValueRangeBodyAdjustment(range, price, flag) {
-  const purchase_date = getDate(new Date(document.getElementById('purchase_date').value), '/');
-  const description = document.getElementById('description').value;
-  // 2/3の固定割合
-  var wari_flag = 0;
-  var sheet_function = '=if($E2="Ryotaro",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 2, false),0) + if($E2="Wappy",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 3, false),0)'
+function getValueRangeBodyAdjustment(price, flag) {
+  const purchase_date = getDate(new Date(document.getElementById(HTML_ID_PURCHASE_DATE).value), '/');
+  const description = document.getElementById(HTML_ID_DESCRIPTION).value;
+  const purchase_rate = document.getElementById(HTML_ID_PURCHASE_RATE).value;
 
   return {
-    'range': range,
+    'range': ADJUSTMENT_RANGE,
     'majorDimension': MAJOR_DIMENSION,
     'values': [
-      [ description, price, purchase_date, wari_flag, flag, sheet_function]
+      [ description, price, purchase_date, purchase_rate, flag, SHEETS_FUNCTION]
     ]
   };
 }
@@ -218,9 +236,9 @@ function getParams(range) {
  * @param {Object} range 
  * @param {Integer} price 
  */
-function apprendTransferFee(purchase_method, range, price, callback) {
-  if(purchase_method === '交通系') {
-    sendRequestAccount(getValueRangeBodyAccount(range, price * -1, '交通費', 'Pasmo'), callback);
+function apprendTransferFee(purchase_method, price, callback) {
+  if(purchase_method === METHOD_TRANSTPORT) {
+    sendRequestAccount(getValueRangeBodyAccount(price * -1, TYPE_TRANSPORT, METHOD_PASMO_CREDIT_CARD), callback);
   } else {
     callback();
   }
@@ -294,31 +312,52 @@ function setButtonAvailability(isDisable) {
   document.getElementById('send').disabled = isDisable;
 }
 
+function getPurchaseRate() {
+  const purchase_rate = document.getElementById(HTML_ID_PURCHASE_RATE).value;
+  switch(purchase_rate) {
+    case "0": // Default
+      return 2/3;
+    case "1": // Even
+      return 1/2;
+    case "2": // Ryoh
+      return 1;
+    case "3": // Wapi
+      return 0;
+  }
+}
+
 /**
  * Make API Call
  */
 function makeApiCall() {
-  const price = document.getElementById('price').value;
-  const purchase_type = document.getElementById('purchase_type').value;
-  const purchase_method = document.getElementById('purchase_method').value;
-  const ryoh_flag = document.getElementById('ryoh').checked;
-  const wapi_flag = document.getElementById('wapi').checked;        
+  const price = document.getElementById(HTML_ID_PRICE).value;
+  const purchase_type = document.getElementById(HTML_ID_PURCHASE_TYPE).value;
+  const purchase_method = document.getElementById(HTML_ID_PURCHASE_METHOD).value;
+  const ryoh_flag = document.getElementById(HTML_ID_RYOH).checked;
+  const wapi_flag = document.getElementById(HTML_ID_WAPI).checked;
+  
+  // Clear Texts
+  updateHTMLText(ACCOUNT_TEXT_ID, '');
+  updateHTMLText(ADJUSTMENT_TEXT_ID, '');
 
   // Init text
   setButtonAvailability(true);
   if(ryoh_flag) {
-    sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(req, err) {                    
-      sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, Math.round(price * -1/3), purchase_type, 'キャッシュ', '(返金)'), function(req, err) {
-        apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateAccountSuccessText);
-      });
+    sendRequestAccount(getValueRangeBodyAccount(price, purchase_type, purchase_method), function(req, err) {                    
+      sendRequestAccount(getValueRangeBodyAccount(Math.round(price * (getPurchaseRate() - 1)), purchase_type, METHOD_CASH, SUFFIX_REFUND), function(req, err) {
+        apprendTransferFee(purchase_method, price, updateAccountSuccessText);
+      })
     });
-    sendRequestAdjustment(getValueRangeBodyAdjustment(ADJUSTMENT_RANGE, price, "Ryotaro"), updateAdjustmentSuccessText);
-  } else if(wapi_flag) {
-    sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, Math.round(price * 2/3), purchase_type, 'キャッシュ', '(わぴ払い)'), updateAccountSuccessText);
-    sendRequestAdjustment(getValueRangeBodyAdjustment(ADJUSTMENT_RANGE, price, "Wappy"), updateAdjustmentSuccessText);
-  } else {
-    sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(res, err) {
-      apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateAccountSuccessText);
-    });
+    sendRequestAdjustment(getValueRangeBodyAdjustment(price, PAYMENT_BY_RYOH), updateAdjustmentSuccessText);
+    return;
   }
+  if(wapi_flag) {
+    sendRequestAccount(getValueRangeBodyAccount(Math.round(price * getPurchaseRate()), purchase_type, METHOD_CASH, SUFFIX_WAPI_PAY), updateAccountSuccessText);
+    sendRequestAdjustment(getValueRangeBodyAdjustment(price, PAYMENT_BY_WAPPY), updateAdjustmentSuccessText);
+    return;
+  }
+  // Default Request
+  sendRequestAccount(getValueRangeBodyAccount(price, purchase_type, purchase_method), function(res, err) {
+    apprendTransferFee(purchase_method, price, updateAccountSuccessText);
+  });
 }
