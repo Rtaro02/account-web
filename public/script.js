@@ -302,7 +302,11 @@ function makeApiCall() {
   const purchase_type = document.getElementById('purchase_type').value;
   const purchase_method = document.getElementById('purchase_method').value;
   const ryoh_flag = document.getElementById('ryoh').checked;
-  const wapi_flag = document.getElementById('wapi').checked;        
+  const wapi_flag = document.getElementById('wapi').checked;
+  
+  // Clear Texts
+  updateHTMLText(ACCOUNT_TEXT_ID, '');
+  updateHTMLText(ADJUSTMENT_TEXT_ID, '');
 
   // Init text
   setButtonAvailability(true);
@@ -313,12 +317,15 @@ function makeApiCall() {
       });
     });
     sendRequestAdjustment(getValueRangeBodyAdjustment(ADJUSTMENT_RANGE, price, "Ryotaro"), updateAdjustmentSuccessText);
-  } else if(wapi_flag) {
+    return;
+  }
+  if(wapi_flag) {
     sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, Math.round(price * 2/3), purchase_type, 'キャッシュ', '(わぴ払い)'), updateAccountSuccessText);
     sendRequestAdjustment(getValueRangeBodyAdjustment(ADJUSTMENT_RANGE, price, "Wappy"), updateAdjustmentSuccessText);
-  } else {
-    sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(res, err) {
-      apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateAccountSuccessText);
-    });
+    return;
   }
+  // Default Request
+  sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(res, err) {
+    apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateAccountSuccessText);
+  });
 }
