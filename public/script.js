@@ -1,8 +1,14 @@
-const DISCOVERY_DOCS = ["https://sheets.googleapis.com/$discovery/rest?version=v4"];
-const SCOPES = "https://www.googleapis.com/auth/spreadsheets";
+const DISCOVERY_DOCS = ['https://sheets.googleapis.com/$discovery/rest?version=v4'];
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 const VALUE_INPUT_OPTION = 'USER_ENTERED'; 
-const DIMENSION = "ROWS";
-const MAJOR_DIMENSION = "ROWS";
+const DIMENSION = 'ROWS';
+const MAJOR_DIMENSION = 'ROWS';
+const ACCOUNT_RANGE = 'List!A2:F2';
+const ADJUSTMENT_RANGE = 'adjustment_list!A2:F2';
+const ACCOUNT_SHEET_ID = 424497227;
+const ADJUSTMENT_SHEET_ID = 206700719;
+const ACCOUNT_TEXT_ID = 'account-result-text';
+const ADJUSTMENT_TEXT_ID = 'adjustment-result-text';
 
 // You have to define following secrets at gitignored files
 // const CLIENT_ID =
@@ -114,9 +120,9 @@ function getTimestamp(date) {
  * @param {Object} valueRangeBody 
  * @param {Function} callback 
  */
-function updateValue(params, valueRangeBody, callback) {
+function updateValue(params, valueRangeBody, fail_callback, success_callback) {
   var request = gapi.client.sheets.spreadsheets.values.update(params, valueRangeBody);
-  request.then(callback, updateFailText);
+  request.then(success_callback, fail_callback);
 }
 
 /**
@@ -124,22 +130,22 @@ function updateValue(params, valueRangeBody, callback) {
  * https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate
  * @param {Function} callback 
  */
-function insertRow(callback) {
+function insertRow(sheetId, fail_callback, callback) {
   var params = { spreadsheetId: SPREADSHEET_ID }
   var batchUpdateSpreadsheetRequestBody = {
     requests: [{
-      "insertDimension": {
-        "range": {
-          "sheetId": 424497227,
-          "dimension": DIMENSION,
-          "startIndex": 1,
-          "endIndex": 2
+      'insertDimension': {
+        'range': {
+          'sheetId': sheetId,
+          'dimension': DIMENSION,
+          'startIndex': 1,
+          'endIndex': 2
         }
       }
     }],
   };
   var request = gapi.client.sheets.spreadsheets.batchUpdate(params, batchUpdateSpreadsheetRequestBody);
-  request.then(callback, updateFailText);
+  request.then(callback, fail_callback);
 }
 
 /**
@@ -152,16 +158,42 @@ function insertRow(callback) {
  * @param {*} suffix 
  * @returns 
  */
-function getValueRangeBody(range, price, purchase_type, purchase_method, suffix) {
+function getValueRangeBodyAccount(range, price, purchase_type, purchase_method, suffix) {
   const timestamp = getTimestamp(new Date());
-  const purchase_date = getDate(new Date(document.getElementById("purchase_date").value), "/");
-  const description = !!suffix ? `${document.getElementById("description").value} ${suffix}` : document.getElementById("description").value;
+  const purchase_date = getDate(new Date(document.getElementById('purchase_date').value), '/');
+  const description = !!suffix ? `${document.getElementById('description').value} ${suffix}` : document.getElementById('description').value;
 
   return {
-    "range": range,
-    "majorDimension": MAJOR_DIMENSION,
-    "values": [
+    'range': range,
+    'majorDimension': MAJOR_DIMENSION,
+    'values': [
       [ timestamp, purchase_date, purchase_type, purchase_method, price, description]
+    ]
+  };
+}
+
+/**
+ * Construct ValueRange Resources
+ * https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values
+ * @param {*} range 
+ * @param {*} price 
+ * @param {*} purchase_type 
+ * @param {*} purchase_method 
+ * @param {*} suffix 
+ * @returns 
+ */
+function getValueRangeBodyAdjustment(range, price, flag) {
+  const purchase_date = getDate(new Date(document.getElementById('purchase_date').value), '/');
+  const description = document.getElementById('description').value;
+  // 2/3の固定割合
+  var wari_flag = 0;
+  var sheet_function = '=if($E2="Ryotaro",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 2, false),0) + if($E2="Wappy",$B2*VLOOKUP($D2,adjustment_master!$B:$D, 3, false),0)'
+
+  return {
+    'range': range,
+    'majorDimension': MAJOR_DIMENSION,
+    'values': [
+      [ description, price, purchase_date, wari_flag, flag, sheet_function]
     ]
   };
 }
@@ -187,10 +219,8 @@ function getParams(range) {
  * @param {Integer} price 
  */
 function apprendTransferFee(purchase_method, range, price, callback) {
-  if(purchase_method === "交通系") {
-    insertRow(function(res, err) {
-      updateValue(getParams(range), getValueRangeBody(range, price * -1, "交通費", "Pasmo"), callback);
-    });
+  if(purchase_method === '交通系') {
+    sendRequestAccount(getValueRangeBodyAccount(range, price * -1, '交通費', 'Pasmo'), callback);
   } else {
     callback();
   }
@@ -198,13 +228,25 @@ function apprendTransferFee(purchase_method, range, price, callback) {
 
 /**
  * Call API set (insert and update)
- * @param {Object} params 
  * @param {Object} valueRangeBody 
  * @param {Function} callback 
  */
-function sendRequest(params, valueRangeBody, callback) {
-  insertRow(function(res) {
-    updateValue(params, valueRangeBody, callback);
+function sendRequestAccount(valueRangeBody, callback) {
+  updateHTMLText(ACCOUNT_TEXT_ID, 'Account Sending...');
+  insertRow(ACCOUNT_SHEET_ID, updateAccountFailText, function(res) {
+    updateValue(getParams(ACCOUNT_RANGE), valueRangeBody, updateAccountFailText, callback);
+  });
+}
+
+/**
+ * Call API set (insert and update)
+ * @param {Object} valueRangeBody 
+ * @param {Function} callback 
+ */
+function sendRequestAdjustment(valueRangeBody, callback) {
+  updateHTMLText(ADJUSTMENT_TEXT_ID, 'Adjustment Sending...');
+  insertRow(ADJUSTMENT_SHEET_ID, updateAdjustmentFailText, function(res) {
+    updateValue(getParams(ADJUSTMENT_RANGE), valueRangeBody, updateAdjustmentFailText, callback);
   });
 }
 
@@ -212,57 +254,71 @@ function sendRequest(params, valueRangeBody, callback) {
  * Update text
  * @param {String} text 
  */
-function updateHTMLText(text) {
-  document.getElementById("result-text").innerText = text;
+function updateHTMLText(id, text) {
+  document.getElementById(id).innerText = text;
+}
+
+var updateAccountSuccessText = function() {
+  updateSuccessText(ACCOUNT_TEXT_ID);
+}
+
+var updateAccountFailText = function() {
+  updateFailText(ACCOUNT_TEXT_ID);
+}
+
+var updateAdjustmentSuccessText = function() {
+  updateSuccessText(ADJUSTMENT_TEXT_ID);
+}
+
+var updateAdjustmentFailText = function() {
+  updateFailText(ADJUSTMENT_TEXT_ID);
 }
 
 /**
  * When Sheet API call failed, HTML text is updated.
  */
-var updateFailText = function() {
-  updateHTMLText("Sheet API call failed...");
+var updateFailText = function(id) {
+  updateHTMLText(id, 'Sheet API call failed...');
   setButtonAvailability(false);
 }
 
 /**
  * When Sheet API successfully called, HTML text is updated.
  */
-var updateSuccessText = function() {
-  updateHTMLText("Sheet API successfully called!");
+var updateSuccessText = function(id) {
+  updateHTMLText(id, 'Sheet API successfully called!');
   setButtonAvailability(false);
 }
 
 function setButtonAvailability(isDisable) {
-  document.getElementById("send").disabled = isDisable;
+  document.getElementById('send').disabled = isDisable;
 }
 
 /**
  * Make API Call
  */
 function makeApiCall() {
-  const price = document.getElementById("price").value;
-  const purchase_type = document.getElementById("purchase_type").value;
-  const purchase_method = document.getElementById("purchase_method").value;
-  const ryoh_flag = document.getElementById("ryoh").checked;
-  const wapi_flag = document.getElementById("wapi").checked;        
-  const range = 'List!A2:F2';
+  const price = document.getElementById('price').value;
+  const purchase_type = document.getElementById('purchase_type').value;
+  const purchase_method = document.getElementById('purchase_method').value;
+  const ryoh_flag = document.getElementById('ryoh').checked;
+  const wapi_flag = document.getElementById('wapi').checked;        
 
   // Init text
-  updateHTMLText("Sending...");
   setButtonAvailability(true);
   if(ryoh_flag) {
-    sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(req, err) {                    
-      sendRequest(getParams(range), getValueRangeBody(range, Math.round(price * -1/3), purchase_type, "キャッシュ", '(返金)'), function(req, err) {
-        apprendTransferFee(purchase_method, range, price, updateSuccessText);
+    sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(req, err) {                    
+      sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, Math.round(price * -1/3), purchase_type, 'キャッシュ', '(返金)'), function(req, err) {
+        apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateAccountSuccessText);
       });
     });
+    sendRequestAdjustment(getValueRangeBodyAdjustment(ADJUSTMENT_RANGE, price, "Ryotaro"), updateAdjustmentSuccessText);
   } else if(wapi_flag) {
-    sendRequest(getParams(range), getValueRangeBody(range, Math.round(price * 2/3), purchase_type, "キャッシュ", '(わぴ払い)'), function(req, err){
-      apprendTransferFee(purchase_method, range, price, updateSuccessText);
-    });
+    sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, Math.round(price * 2/3), purchase_type, 'キャッシュ', '(わぴ払い)'), updateAccountSuccessText);
+    sendRequestAdjustment(getValueRangeBodyAdjustment(ADJUSTMENT_RANGE, price, "Wappy"), updateAdjustmentSuccessText);
   } else {
-    sendRequest(getParams(range), getValueRangeBody(range, price, purchase_type, purchase_method), function(res, err) {
-      apprendTransferFee(purchase_method, range, price, updateSuccessText);
+    sendRequestAccount(getValueRangeBodyAccount(ACCOUNT_RANGE, price, purchase_type, purchase_method), function(res, err) {
+      apprendTransferFee(purchase_method, ACCOUNT_RANGE, price, updateAccountSuccessText);
     });
   }
 }
