@@ -45,11 +45,67 @@ const HTML_ID_RYOH = 'ryoh';
 const HTML_ID_WAPI = 'wapi';
 
 // ==========================================
-// 状態変数
+// 状態変数 & ストレージキー
 // ==========================================
+const STORAGE_KEY_TOKEN = 'account_web_gapi_token';
 let tokenClient = null;
 let gapiInited = false;
 let gisInited = false;
+
+// ==========================================
+// トークン永続化 (localStorage) ヘルパー
+// ==========================================
+
+function saveToken(resp) {
+  try {
+    const expiresIn = Number(resp.expires_in) || 3600;
+    const tokenData = {
+      token: resp,
+      expiresAt: Date.now() + (expiresIn - 60) * 1000 // 1分前の安全マージン
+    };
+    localStorage.setItem(STORAGE_KEY_TOKEN, JSON.stringify(tokenData));
+  } catch (e) {
+    console.error('トークン保存エラー:', e);
+  }
+}
+
+function getSavedToken() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_TOKEN);
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch (e) {
+    localStorage.removeItem(STORAGE_KEY_TOKEN);
+    return null;
+  }
+}
+
+function clearSavedToken() {
+  try {
+    localStorage.removeItem(STORAGE_KEY_TOKEN);
+  } catch (e) {
+    console.error('トークン削除エラー:', e);
+  }
+}
+
+/**
+ * 保存されたトークンがあり、有効期限内なら復元する
+ */
+function restoreTokenIfValid() {
+  const saved = getSavedToken();
+  if (!saved) return false;
+
+  if (Date.now() < saved.expiresAt) {
+    gapi.client.setToken(saved.token);
+    updateAuthUI(true);
+    logMessage('保存された認証セッションを復元しました（有効期限内）。');
+    return true;
+  } else {
+    clearSavedToken();
+    logMessage('前回の認証セッションの有効期限が切れています。');
+    return false;
+  }
+}
 
 // ==========================================
 // Google API & GIS 初期化フロー
@@ -106,8 +162,13 @@ function checkInitState() {
   if (gapiInited && gisInited) {
     logMessage('Google 認証システムの準備が整いました。');
     const authBtn = document.getElementById(HTML_ID_AUTH_BUTTON);
-    authBtn.style.display = 'inline-flex';
     authBtn.disabled = false;
+
+    // 前回のトークンがあれば自動復元
+    const restored = restoreTokenIfValid();
+    if (!restored) {
+      updateAuthUI(false);
+    }
   }
 }
 
@@ -124,14 +185,16 @@ function handleAuthClick() {
     if (resp.error !== undefined) {
       logMessage('認証エラー: ' + JSON.stringify(resp));
       updateAuthUI(false);
+      clearSavedToken();
       showResult(ACCOUNT_CARD_ID, ACCOUNT_TEXT_ID, '認証に失敗しました: ' + resp.error, 'error');
       return;
     }
 
-    // トークンを GAPI クライアントへセット
+    // トークンを GAPI クライアントへセット & localStorage に保持
     gapi.client.setToken(resp);
+    saveToken(resp);
     updateAuthUI(true);
-    logMessage('Google 認証成功。アクセストークンを取得しました。');
+    logMessage('Google 認証成功。アクセストークンを保持しました。');
   };
 
   // トークンが未取得または期限切れの場合はプロンプトを表示
@@ -147,6 +210,7 @@ function handleAuthClick() {
  */
 function handleSignoutClick() {
   const token = gapi.client.getToken();
+  clearSavedToken();
   if (token !== null) {
     google.accounts.oauth2.revoke(token.access_token, () => {
       gapi.client.setToken('');
@@ -154,7 +218,9 @@ function handleSignoutClick() {
       logMessage('Google アカウントからサインアウトしました。');
     });
   } else {
+    gapi.client.setToken('');
     updateAuthUI(false);
+    logMessage('サインアウトしました。');
   }
 }
 
@@ -319,9 +385,11 @@ async function makeApiCall() {
     return;
   }
 
-  // 認証チェック
-  if (!gapi.client.getToken()) {
-    alert('先に Google ログインを行ってください。');
+  // 認証チェック & 有効期限チェック
+  const savedToken = getSavedToken();
+  if (!gapi.client.getToken() || (savedToken && Date.now() >= savedToken.expiresAt)) {
+    logMessage('認証セッションが切れているため、再認証を行います。');
+    alert('認証セッションが切れています。再度 Google ログインを行ってください。');
     handleAuthClick();
     return;
   }
