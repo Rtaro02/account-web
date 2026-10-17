@@ -1,93 +1,148 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
   <head>
-    <title>My Account</title>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Account - 支出・精算管理</title>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <p>My Account</p>
+    <div class="app-container">
+      <div class="glass-panel">
+        <!-- Header -->
+        <header class="app-header">
+          <div class="brand">
+            <div class="brand-icon">💳</div>
+            <div class="brand-text">
+              <h1>My Account</h1>
+              <p>支出・精算スプレッドシート連携</p>
+            </div>
+          </div>
+          <div class="auth-status-container">
+            <span id="auth_status" class="status-badge">
+              <span class="status-dot"></span>
+              <span id="auth_status_text">未接続</span>
+            </span>
+            <button id="authorize_button" class="auth-btn auth-btn-signin" style="display: none;">
+              Google ログイン
+            </button>
+            <button id="signout_button" class="auth-btn auth-btn-signout" style="display: none;">
+              サインアウト
+            </button>
+          </div>
+        </header>
 
-    <!--Add buttons to initiate auth sequence and sign out-->
-    <button id="authorize_button" style="display: none;">Authorize</button>
-    <button id="signout_button" style="display: none;">Sign Out</button>
-    <div>
-      購入日
-      <input id="purchase_date" placeholder="purchase_date" type="date">
-    </div>
-    <div>
-      収支分類
-      <select id="purchase_type">
-        <option value="食費">食費</option>
-        <option value="交際費">交際費</option>
-        <option value="アイドル">アイドル</option>
-        <option value="交通費">交通費</option>
-        <option value="必要経費">必要経費</option>
-        <option value="雑貨費">雑貨費</option>
-        <option value="特別費用">特別費用</option>
-      </select>
-    </div>
-    <div>
-      収支分類
-      <select id="purchase_method">
-        <option value="三井住友">三井住友</option>
-        <option value="キャッシュ">キャッシュ</option>
-        <option value="交通系">交通系</option>
-        <option value="セブンカード">セブンカード</option>
-        <option value="Pasmo">Pasmo</option>
-        <option value="AMEX">AMEX</option>
-        <option value="ヨドバシ">ヨドバシ</option>
-        <option value="楽天カード">楽天カード</option>
-      </select>
-    </div>
-    <div>
-      支払い金額
-      <input id="price" type="number">
-    </div>
-    <div>
-      支払い購買概要
-      <input id="description" type="text">
-    </div>
-    <div>
-      りょう払い案件
-      <input id="ryoh" type="checkbox">
-    </div>
-    <div>
-      わぴ払い案件
-      <input id="wapi" type="checkbox">
-    </div>
-    <div>
-      割合
-      <select id="purchase_rate">
-        <option value="0">default (2:1)</option>
-        <option value="1">割り勘 (1:1)</option>
-        <option value="2">りょう負担 (1:0)</option>
-        <option value="3">わぴ負担 (0:1)</option>
-      </select>
-    </div>
-    <!-- <div>
-      <button id="fav" onclick="location.href='./fav.html'">Fav List</button>
-    </div> -->
-    <div>
-      <button id="send">Send Item</button>
-    </div>
-    <div>
-      <text id="account-result-text"></button>
-    </div>
-    <div>
-      <text id="adjustment-result-text"></button>
+        <!-- Main Form -->
+        <main class="form-grid">
+          <!-- Row 1: Purchase Date & Type -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="purchase_date">購入日</label>
+              <input id="purchase_date" type="date" required />
+            </div>
+            <div class="form-group">
+              <label for="purchase_type">収支分類</label>
+              <select id="purchase_type">
+                <option value="食費">食費</option>
+                <option value="交際費">交際費</option>
+                <option value="アイドル">アイドル</option>
+                <option value="交通費">交通費</option>
+                <option value="必要経費">必要経費</option>
+                <option value="雑貨費">雑貨費</option>
+                <option value="特別費用">特別費用</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Row 2: Purchase Method & Price -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="purchase_method">支払い方法</label>
+              <select id="purchase_method">
+                <option value="三井住友">三井住友</option>
+                <option value="キャッシュ">キャッシュ</option>
+                <option value="交通系">交通系</option>
+                <option value="セブンカード">セブンカード</option>
+                <option value="Pasmo">Pasmo</option>
+                <option value="AMEX">AMEX</option>
+                <option value="ヨドバシ">ヨドバシ</option>
+                <option value="楽天カード">楽天カード</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="price">支払い金額</label>
+              <div class="amount-wrapper">
+                <span class="currency-symbol">¥</span>
+                <input id="price" type="number" placeholder="0" min="0" required />
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 3: Description -->
+          <div class="form-group">
+            <label for="description">購買概要・品目</label>
+            <input id="description" type="text" placeholder="例: スーパーでの買い物、ランチ代" />
+          </div>
+
+          <!-- Split & Shared Expense Section -->
+          <div class="split-section">
+            <div class="case-checkboxes">
+              <label class="case-card" id="ryoh_card">
+                <input id="ryoh" type="checkbox" />
+                <span>りょう払い案件</span>
+              </label>
+              <label class="case-card" id="wapi_card">
+                <input id="wapi" type="checkbox" />
+                <span>わぴ払い案件</span>
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label for="purchase_rate">負担割合</label>
+              <select id="purchase_rate">
+                <option value="0">default (2:1)</option>
+                <option value="1">割り勘 (1:1)</option>
+                <option value="2">りょう負担 (1:0)</option>
+                <option value="3">わぴ負担 (0:1)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="actions">
+            <button id="send" class="btn-primary" disabled>
+              <div class="spinner" id="btn_spinner"></div>
+              <span class="btn-text" id="btn_text">スプレッドシートへ送信</span>
+            </button>
+          </div>
+
+          <!-- Results & Feedback -->
+          <div class="result-container">
+            <div id="account-result-card" class="result-card">
+              <span class="result-icon">ℹ️</span>
+              <span id="account-result-text"></span>
+            </div>
+            <div id="adjustment-result-card" class="result-card">
+              <span class="result-icon">ℹ️</span>
+              <span id="adjustment-result-text"></span>
+            </div>
+          </div>
+
+          <!-- Debug Log Drawer -->
+          <details class="log-drawer">
+            <summary>システムログ / API 出力</summary>
+            <pre id="content">システム準備中...</pre>
+          </details>
+        </main>
+      </div>
     </div>
 
-    <pre id="content" style="white-space: pre-wrap;"></pre>
-
+    <!-- Configuration & Scripts -->
     <script type="text/javascript" src="secrets.js"></script>
     <script type="text/javascript" src="script.js"></script>
 
-    <script async defer src="https://apis.google.com/js/api.js"
-      onload="this.onload=function(){};handleClientLoad()"
-      onreadystatechange="if (this.readyState === 'complete') this.onload()">
-      window.onload = function () {
-        document.getElementById("purchase_date").value = getDate(new Date(), "-");
-      }
-    </script>
+    <!-- Google API & Google Identity Services (GIS) -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
   </body>
 </html>
